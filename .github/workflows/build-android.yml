@@ -17,7 +17,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Android NDK
       uses: nttld/setup-ndk@v1.5.0
@@ -54,7 +54,7 @@ jobs:
         cp ${SOFILE} exported/glide-webp-${{ matrix.abi }}.so
 
     - name: Upload hasil build strip
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: glide-webp-${{ matrix.abi }}
         path: exported/glide-webp-${{ matrix.abi }}.so
