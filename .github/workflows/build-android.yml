@@ -1,6 +1,10 @@
-name: Build libwebp for Android
+name: Build libwebp Android
 
 on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -15,39 +19,39 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up Android NDK
-      uses: nttld/setup-ndk@v1
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v1.5.0
       with:
         ndk-version: r26d
 
     - name: Configure build environment
       run: |
-        if [ "${{ matrix.abi }}" == "armeabi-v7a" ]; then
-          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
-          export TARGET=armv7a-linux-androideabi
-          export ARCH=arm
-          export API=21
-        elif [ "${{ matrix.abi }}" == "arm64-v8a" ]; then
-          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
-          export TARGET=aarch64-linux-android
-          export ARCH=arm64
-          export API=21
-        elif [ "${{ matrix.abi }}" == "x86" ]; then
-          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
-          export TARGET=i686-linux-android
-          export ARCH=x86
-          export API=21
-        else
-          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
-          export TARGET=x86_64-linux-android
-          export ARCH=x86_64
-          export API=21
-        fi
-
-        echo "TOOLCHAIN=$TOOLCHAIN" >> $GITHUB_ENV
-        echo "TARGET=$TARGET" >> $GITHUB_ENV
-        echo "ARCH=$ARCH" >> $GITHUB_ENV
-        echo "API=$API" >> $GITHUB_ENV
+        case "${{ matrix.abi }}" in
+          armeabi-v7a)
+            echo "TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64" >> $GITHUB_ENV
+            echo "TARGET=armv7a-linux-androideabi" >> $GITHUB_ENV
+            echo "ARCH=arm" >> $GITHUB_ENV
+            echo "API=21" >> $GITHUB_ENV
+            ;;
+          arm64-v8a)
+            echo "TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64" >> $GITHUB_ENV
+            echo "TARGET=aarch64-linux-android" >> $GITHUB_ENV
+            echo "ARCH=arm64" >> $GITHUB_ENV
+            echo "API=21" >> $GITHUB_ENV
+            ;;
+          x86)
+            echo "TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64" >> $GITHUB_ENV
+            echo "TARGET=i686-linux-android" >> $GITHUB_ENV
+            echo "ARCH=x86" >> $GITHUB_ENV
+            echo "API=21" >> $GITHUB_ENV
+            ;;
+          x86_64)
+            echo "TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64" >> $GITHUB_ENV
+            echo "TARGET=x86_64-linux-android" >> $GITHUB_ENV
+            echo "ARCH=x86_64" >> $GITHUB_ENV
+            echo "API=21" >> $GITHUB_ENV
+            ;;
+        esac
 
     - name: Build libwebp for ${{ matrix.abi }}
       env:
@@ -65,8 +69,13 @@ jobs:
         ../configure --host=${TARGET} --enable-shared --disable-static
         make -j$(nproc)
 
-    - name: Upload artifact
+    - name: Rename and collect artifact
+      run: |
+        mkdir -p exported
+        cp build-android/src/.libs/libwebp.so exported/glide-webp-${{ matrix.abi }}.so
+
+    - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
         name: glide-webp-${{ matrix.abi }}
-        path: build-android/src/.libs/libwebp.so
+        path: exported/glide-webp-${{ matrix.abi }}.so
