@@ -1,4 +1,4 @@
-name: Build libwebp Android
+name: Build & Strip libwebp Android
 
 on:
   push:
@@ -17,14 +17,14 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Setup Android NDK
       uses: nttld/setup-ndk@v1.5.0
       with:
         ndk-version: r26d
 
-    - name: Install CMake (jika belum ada)
+    - name: Install CMake (if not present)
       run: sudo apt-get update && sudo apt-get install -y cmake
 
     - name: Build libwebp for ${{ matrix.abi }}
@@ -32,14 +32,10 @@ jobs:
         mkdir build-android && cd build-android
 
         case "${{ matrix.abi }}" in
-          armeabi-v7a)
-            ANDROID_ABI="armeabi-v7a" ;;
-          arm64-v8a)
-            ANDROID_ABI="arm64-v8a" ;;
-          x86)
-            ANDROID_ABI="x86" ;;
-          x86_64)
-            ANDROID_ABI="x86_64" ;;
+          armeabi-v7a) ANDROID_ABI="armeabi-v7a" ;;
+          arm64-v8a) ANDROID_ABI="arm64-v8a" ;;
+          x86) ANDROID_ABI="x86" ;;
+          x86_64) ANDROID_ABI="x86_64" ;;
         esac
 
         cmake .. \
@@ -50,18 +46,15 @@ jobs:
 
         cmake --build . --config Release -j$(nproc)
 
-    - name: Rename & Collect
+    - name: Strip .so file and collect
       run: |
         mkdir -p exported
-        if [ -f build-android/src/libwebp.so ]; then
-          cp build-android/src/libwebp.so exported/glide-webp-${{ matrix.abi }}.so
-        else
-          # fallback untuk struktur folder berbeda
-          find build-android -name 'libwebp.so' -exec cp {} exported/glide-webp-${{ matrix.abi }}.so \;
-        fi
+        SOFILE=$(find build-android -name 'libwebp.so' | head -n1)
+        ${ANDROID_NDK_LATEST_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip --strip-unneeded ${SOFILE}
+        cp ${SOFILE} exported/glide-webp-${{ matrix.abi }}.so
 
-    - name: Upload hasil build
-      uses: actions/upload-artifact@v4
+    - name: Upload hasil build strip
+      uses: actions/upload-artifact@v3
       with:
         name: glide-webp-${{ matrix.abi }}
         path: exported/glide-webp-${{ matrix.abi }}.so
