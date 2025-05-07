@@ -1,0 +1,72 @@
+name: Build libwebp for Android
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        abi: [armeabi-v7a, arm64-v8a, x86, x86_64]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r26d
+
+    - name: Configure build environment
+      run: |
+        if [ "${{ matrix.abi }}" == "armeabi-v7a" ]; then
+          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
+          export TARGET=armv7a-linux-androideabi
+          export ARCH=arm
+          export API=21
+        elif [ "${{ matrix.abi }}" == "arm64-v8a" ]; then
+          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
+          export TARGET=aarch64-linux-android
+          export ARCH=arm64
+          export API=21
+        elif [ "${{ matrix.abi }}" == "x86" ]; then
+          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
+          export TARGET=i686-linux-android
+          export ARCH=x86
+          export API=21
+        else
+          export TOOLCHAIN=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64
+          export TARGET=x86_64-linux-android
+          export ARCH=x86_64
+          export API=21
+        fi
+
+        echo "TOOLCHAIN=$TOOLCHAIN" >> $GITHUB_ENV
+        echo "TARGET=$TARGET" >> $GITHUB_ENV
+        echo "ARCH=$ARCH" >> $GITHUB_ENV
+        echo "API=$API" >> $GITHUB_ENV
+
+    - name: Build libwebp for ${{ matrix.abi }}
+      env:
+        TOOLCHAIN: ${{ env.TOOLCHAIN }}
+        TARGET: ${{ env.TARGET }}
+        ARCH: ${{ env.ARCH }}
+        API: ${{ env.API }}
+      run: |
+        mkdir build-android && cd build-android
+        ../autogen.sh
+        CC=$TOOLCHAIN/bin/${TARGET}${API}-clang \
+        AR=$TOOLCHAIN/bin/llvm-ar \
+        LD=$TOOLCHAIN/bin/ld \
+        CFLAGS="--sysroot=$TOOLCHAIN/sysroot" \
+        ../configure --host=${TARGET} --enable-shared --disable-static
+        make -j$(nproc)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: glide-webp-${{ matrix.abi }}
+        path: build-android/src/.libs/libwebp.so
